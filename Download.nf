@@ -33,7 +33,7 @@ process getgenome {
 }
 
 /* 
- *  Download human genome gnnotation file (gtf format)
+ *  Download human genome annotation file (gtf format)
  */
 
 process getannot {
