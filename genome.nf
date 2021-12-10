@@ -1,7 +1,7 @@
 /* 
  *  Download Genome file
  */
-Channel.of(1..22, "Mt", "X", "Y")
+Channel.of(1..22, "MT", "X", "Y")
        .set{chrs}
 
 process getgenome {
