@@ -21,14 +21,14 @@ log.info """\
 process index {
     
     input:
-    path genome from ref
+    path genome from params.genome
     
     output:
-    path 'index' into index_ch
+    path '$baseDir/index' into index_ch
 
     script: 
     """
-    STAR --runThreadN ${task.cpus} --runMode genomeGenerate --genomeDir index --genomeFastaFiles $genome
+    STAR --runThreadN ${task.cpus} --runMode genomeGenerate --genomeDir index/ --genomeFastaFiles $genome
     """
 }
 
@@ -138,4 +138,3 @@ process extraction {
 workflow.onComplete { 
  log.info ( workflow.success ? "\n Done! Congratulations! \n" : "Oops ... something went wrong!" )
 }
-
