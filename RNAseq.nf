@@ -19,12 +19,11 @@ log.info """\
  * given the genome file
  */
 process index {
-    
     input:
     path genome from params.genome
     
     output:
-    path '$baseDir/index' into index_ch
+    path 'index' into index_ch
 
     script: 
     """
@@ -47,13 +46,13 @@ Channel
 
 process mapping {
     tag "$pair_id"
-         
+    
     input:
     path indexdir from index_ch
     tuple pair_id, path(reads) from read_pairs_ch
     
     output:
-    tuple val(pair_id), file("${pair_id}.bam") into {bam_ch; bam_ch2}
+    tuple val(pair_id), file("${pair_id}.bam") into bam_ch
  
     script:
     """
@@ -100,7 +99,6 @@ process quantification {
     
     input:
     path annot from params.annot
-    file bam_file from bam_ch2.flatten()
     file bai from bai_ch
     
     output:
@@ -108,7 +106,7 @@ process quantification {
     
     script:
     """
-    featureCounts -T ${task.cpus} -t gene -g gene_id -s 0 -a $annot -o count.txt $bam_file 
+    featureCounts -T ${task.cpus} -t gene -g gene_id -s 0 -a $annot -o count.txt *bam 
     """
 } 
 
