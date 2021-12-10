@@ -1,10 +1,9 @@
 /* 
  * Pipeline input parameters 
  */
-params.reads = "$baseDir/*_{1,2}.fq.gz"
+params.reads = "$baseDir/*_{1,2}.fastq.gz"
 params.genome = "$baseDir/ref.fa"
 params.annot = "$baseDir/Homo_sapiens.GRCh38.101.chr.gtf"
-params.indexdir = "$baseDir/index"
 
 log.info """\
          R N A S E Q   P I P E L I N E    
@@ -12,7 +11,6 @@ log.info """\
          reads        : ${params.reads}
          genome       : ${params.genome}
          annotation   : ${params.annot}
-         indexdir     : ${params.indexdir}
          """
          .stripIndent()
 
@@ -23,12 +21,14 @@ log.info """\
 process index {
     
     input:
-    path genome from params.genome
-    path indexdir from params.indexdir
+    path genome from ref
     
+    output:
+    path 'index' into index_ch
+
     script: 
     """
-    STAR --runThreadN ${task.cpus} --runMode genomeGenerate --genomeDir $indexdir --genomeFastaFiles $genome
+    STAR --runThreadN ${task.cpus} --runMode genomeGenerate --genomeDir index --genomeFastaFiles $genome
     """
 }
 
@@ -49,12 +49,11 @@ process mapping {
     tag "$pair_id"
          
     input:
-    path genome from params.genome
-    path indexdir from params.indexdir
+    path indexdir from index_ch
     tuple pair_id, path(reads) from read_pairs_ch
     
     output:
-    tuple val(pair_id), file("${pair_id}.bam") into bam_ch
+    tuple val(pair_id), file("${pair_id}.bam") into {bam_ch; bam_ch2}
  
     script:
     """
@@ -83,10 +82,13 @@ process bamindex {
 
     input:
     val bam_id from bam_ch
+
+    output:
+    file '*bam.bai' into bai_ch
     
     script:
     """
-    samtools index ${bam_id}.bam
+    samtools index ${bam_id}.bam ${bam_id}.bam.bai
     """
 }  
 
@@ -98,13 +100,15 @@ process quantification {
     
     input:
     path annot from params.annot
+    file bam_file from bam_ch2.flatten()
+    file bai from bai_ch
     
     output:
     file("count.txt") into count_matrix
     
     script:
     """
-    featureCounts -T ${task.cpus} -t gene -g gene_id -s 0 -a $annot -o count.txt *.bam  
+    featureCounts -T ${task.cpus} -t gene -g gene_id -s 0 -a $annot -o count.txt $bam_file 
     """
 } 
 
@@ -114,14 +118,16 @@ process quantification {
 
 process extraction {
    tag "Extraction of gene counts"
-        
+    input:
+    file count from count_matrix
+
     output:
     file("counts.txt") into counts
     
     script:
     """
-    sed -i "1d" count.txt
-    cat count.txt | cut -f 1, 7-14 > counts.txt
+    sed -i "1d" $count > count1.txt
+    cat count1.txt | cut -f 1, 7-14 > counts.txt
     """ 
 }
 
@@ -130,5 +136,6 @@ process extraction {
  */
 
 workflow.onComplete { 
-	log.info ( workflow.success ? "\n Done! Congratulations! \n" : "Oops ... something went wrong!" )
+ log.info ( workflow.success ? "\n Done! Congratulations! \n" : "Oops ... something went wrong!" )
 }
+
