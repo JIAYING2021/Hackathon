@@ -5,6 +5,8 @@ Channel.of("SRR628582".."SRR628589")
        .set{ids}
 
 process getfastq {
+    publishDir "/home/ubuntu/Hackathon021", mode: 'copy'
+    
     input:
     val SRAID from ids
     
